@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  mcp-agent-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ./browser_mcp.json:/app/browser_mcp.json
+      - ./.env:/app/.env
+    restart: unless-stopped
