@@ -55,7 +55,26 @@ async def startup_event():
                     "env": {
                         "OPENAPI_MCP_HEADERS": "{\"Authorization\": \"Bearer " + os.getenv("NOTION_API_KEY") + "\", \"Notion-Version\": \"2022-06-28\" }"
                     }
-                }
+                },
+                "github": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-github"],
+                    "env": {
+                        "GITHUB_PERSONAL_ACCESS_TOKEN": os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+                    }
+                },
+                "slack": {
+                    "command": "npx",
+                    "args": [
+                        "-y",
+                        "@modelcontextprotocol/server-slack"
+                    ],
+                    "env": {
+                        "SLACK_BOT_TOKEN": os.getenv("SLACK_BOT_TOKEN"),
+                        "SLACK_TEAM_ID": os.getenv("SLACK_TEAM_ID"),
+                        "SLACK_CHANNEL_IDS": os.getenv("SLACK_CHANNEL_IDS")
+                    }
+                },
             }
         }
 
@@ -68,7 +87,7 @@ async def startup_event():
         )
         
         # エージェントを初期化
-        agent = MCPAgent(llm=llm, client=client)
+        agent = MCPAgent(llm=llm, client=client, use_server_manager=True, max_steps=10)  # max_stepsを10に増やす
         print("✅ MCP Agent initialized successfully!")
         
     except Exception as e:
@@ -90,8 +109,9 @@ async def process_query(
         raise HTTPException(status_code=500, detail="MCP Agent not initialized")
     
     try:
+        new_query = request.query + "\n\nLanguage Preference: You should always speak and think in the \"日本語\" (ja) language."
         # エージェントを実行
-        result = await agent.run(request.query)
+        result = await agent.run(new_query)
         return UpdatedQueryResponse(
             result=result,
             status="success"

@@ -8,6 +8,5 @@ services:
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     volumes:
-      - ./browser_mcp.json:/app/browser_mcp.json
       - ./.env:/app/.env
     restart: unless-stopped
