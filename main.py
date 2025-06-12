@@ -1,5 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+from typing import List, Dict, Any
 import asyncio
 from langchain_anthropic import ChatAnthropic
 from mcp_use import MCPAgent, MCPClient
@@ -17,26 +19,51 @@ class QueryRequest(BaseModel):
     query: str
     
 # レスポンスモデル
-class QueryResponse(BaseModel):
-    result: str
+class UpdatedQueryResponse(BaseModel):
+    result: List[Dict[str, Any]]
     status: str
 
 # MCPエージェントをグローバルに初期化（起動時に一度だけ）
 agent = None
 
+security = HTTPBearer()
+API_BEARER_TOKEN = os.getenv("API_BEARER_TOKEN")
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if credentials.scheme != "Bearer" or credentials.credentials != API_BEARER_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing token",
+        )
+
 @app.on_event("startup")
 async def startup_event():
+    load_dotenv()
+    
     """アプリケーション起動時にMCPエージェントを初期化"""
     global agent
     try:
         # MCPクライアントを設定
-        client = MCPClient.from_config_file(
-            os.path.join("browser_mcp.json")
-        )
-        
+        # client = MCPClient.from_config_file(
+        #     os.path.join("browser_mcp.json")
+        # )
+        config = {
+            "mcpServers": {
+                "notionApi": {
+                    "command": "npx",
+                    "args": ["-y", "@notionhq/notion-mcp-server"],
+                    "env": {
+                        "OPENAPI_MCP_HEADERS": "{\"Authorization\": \"Bearer " + os.getenv("NOTION_API_KEY") + "\", \"Notion-Version\": \"2022-06-28\" }"
+                    }
+                }
+            }
+        }
+
+        # Create MCPClient from configuration dictionary
+        client = MCPClient.from_dict(config)
         # LLMを初期化
         llm = ChatAnthropic(
-            model="claude-3-5-sonnet-20240620", 
+            model="claude-3-7-sonnet-latest", 
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY")
         )
         
@@ -48,9 +75,15 @@ async def startup_event():
         print(f"❌ Failed to initialize MCP Agent: {e}")
         raise e
 
-@app.post("/query", response_model=QueryResponse)
-async def process_query(request: QueryRequest):
-    """クエリを処理してMCPエージェントに実行させる"""
+@app.post("/query", response_model=UpdatedQueryResponse)
+async def process_query(
+    request: QueryRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    print("================")
+    print(request.query)
+    print("================")
+    verify_token(credentials)
     global agent
     
     if agent is None:
@@ -59,13 +92,15 @@ async def process_query(request: QueryRequest):
     try:
         # エージェントを実行
         result = await agent.run(request.query)
-        
-        return QueryResponse(
+        return UpdatedQueryResponse(
             result=result,
             status="success"
         )
         
     except Exception as e:
+        print("================")
+        print(e)
+        print("================")
         raise HTTPException(
             status_code=500, 
             detail=f"Error processing query: {str(e)}"
@@ -88,12 +123,3 @@ async def root():
             "GET /docs": "API documentation"
         }
     }
-
-if __name__ == "__main__":
-    # 開発用サーバーを起動
-    uvicorn.run(
-        "main:app",  # ファイル名がmain.pyの場合
-        host="0.0.0.0",
-        port=8000,
-        reload=True
-    )
