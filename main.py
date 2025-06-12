@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import List, Dict, Any
-import asyncio
 from langchain_anthropic import ChatAnthropic
 from mcp_use import MCPAgent, MCPClient
 import os
