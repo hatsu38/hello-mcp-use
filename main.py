@@ -81,7 +81,7 @@ async def startup_event():
         client = MCPClient.from_dict(config)
         # LLMを初期化
         llm = ChatAnthropic(
-            model="claude-3-7-sonnet-latest", 
+            model="claude-3-5-sonnet-20240620",
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY")
         )
         
