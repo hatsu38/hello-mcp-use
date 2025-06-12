@@ -86,7 +86,7 @@ async def startup_event():
         )
         
         # エージェントを初期化
-        agent = MCPAgent(llm=llm, client=client, use_server_manager=True, max_steps=10)  # max_stepsを10に増やす
+        agent = MCPAgent(llm=llm, client=client, use_server_manager=True, max_steps=50)
         print("✅ MCP Agent initialized successfully!")
         
     except Exception as e:
@@ -111,6 +111,9 @@ async def process_query(
         new_query = request.query + "\n\nLanguage Preference: You should always speak and think in the \"日本語\" (ja) language."
         # エージェントを実行
         result = await agent.run(new_query)
+        print("================")
+        print(f"result: {result}")
+        print("================")
         return UpdatedQueryResponse(
             result=result,
             status="success"
