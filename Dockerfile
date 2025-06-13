@@ -29,9 +29,6 @@ RUN node -v && npm -v
 # builderステージからサイトパッケージをコピー
 COPY --from=builder /app/site-packages /usr/local/lib/python3.13/site-packages
 
-# 検索機能に必要なパッケージを直接インストール
-RUN pip install --no-cache-dir mcp-use[search]
-
 # アプリケーションファイルをコピー
 COPY . .
 

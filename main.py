@@ -3,6 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import List, Dict, Any
 from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from mcp_use import MCPAgent, MCPClient
 import os
 from dotenv import load_dotenv
@@ -19,7 +20,7 @@ class QueryRequest(BaseModel):
     
 # レスポンスモデル
 class UpdatedQueryResponse(BaseModel):
-    result: List[Dict[str, Any]]
+    result: List[Dict[str, Any]] | str
     status: str
 
 # MCPエージェントをグローバルに初期化（起動時に一度だけ）
@@ -82,8 +83,20 @@ async def startup_event():
         # LLMを初期化
         llm = ChatAnthropic(
             model="claude-3-5-sonnet-20240620",
-            anthropic_api_key=os.getenv("ANTHROPIC_API_KEY")
+            anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
+            temperature=0,
+            max_tokens=8192,
+            timeout=None,
+            max_retries=2,
         )
+        # llm = ChatGoogleGenerativeAI(
+        #     model="gemini-2.5-flash-preview-05-20",
+        #     google_api_key=os.getenv("GEMINI_API_KEY"),
+        #     temperature=0,
+        #     max_tokens=None,
+        #     timeout=None,
+        #     max_retries=2,
+        # )
         
         # エージェントを初期化
         agent = MCPAgent(llm=llm, client=client, use_server_manager=True, max_steps=50)
@@ -114,6 +127,7 @@ async def process_query(
         print("================")
         print(f"result: {result}")
         print("================")
+        # [type=list_type, input_value='Slackの最近の投稿...ルを探します。', input_type=str]
         return UpdatedQueryResponse(
             result=result,
             status="success"
